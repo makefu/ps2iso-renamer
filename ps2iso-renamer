@@ -1,0 +1,21 @@
+#!/bin/sh
+set -euf
+
+HERE=$(dirname "$(readlink -f "$0")")
+convert_iso(){
+  ISO="${1?please provide path to iso}"
+  GAMEID_FILE=${GAMEID_FILE:-"$HERE/PS2-GAMEID-TITLE-MASTER.csv"}
+
+
+  GAMEID=$(hdl_dump cdvd_info "$ISO" |cut -d'"' -f2)
+  REALGAMEID=$(echo "$GAMEID"| sed -e 's/\.//' -e 's/_/-/')
+  NAME=$(grep "^$REALGAMEID" "$GAMEID_FILE" | cut -d\; -f2)
+
+  LONGNAME=$GAMEID.$NAME
+
+  ISONAME=$(echo "$LONGNAME" | cut -c-32).iso
+  mv -v "$ISO" "$(dirname "$ISO")/$ISONAME"
+}
+for i in "$@";do
+  convert_iso "$i"
+done
