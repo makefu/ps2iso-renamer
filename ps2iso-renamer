@@ -1,23 +1,42 @@
 #!/bin/sh
-# usage: ps2iso-renamer ISO...
+# usage: ARTDIR=path-to-art ps2iso-renamer ISO...
+# if ARTDIR is set then the respective ART files will be copied to $(dirname ISO)/ART
 
-set -euf
+set -eu
 
 HERE=$(dirname "$(readlink -f "$0")")
+ARTDIR=${ARTDIR:-}
+
 convert_iso(){
   ISO="${1?please provide path to iso}"
+  ISODIR=$(dirname "$ISO")
   GAMEID_FILE=${GAMEID_FILE:-"$HERE/PS2-GAMEID-TITLE-MASTER.csv"}
 
 
   GAMEID=$(hdl_dump cdvd_info "$ISO" |cut -d'"' -f2)
+
+  echo "GAMEID: $GAMEID"
+  if test -z "$GAMEID";then
+    echo "cannot determine GAMEID for $ISO"
+    return
+  fi
+
   REALGAMEID=$(echo "$GAMEID"| sed -e 's/\.//' -e 's/_/-/')
   NAME=$(grep "^$REALGAMEID" "$GAMEID_FILE" | cut -d\; -f2)
 
   LONGNAME=$GAMEID.$NAME
 
   ISONAME=$(echo "$LONGNAME" | cut -c-32).iso
-  mv -v "$ISO" "$(dirname "$ISO")/$ISONAME"
+  if test -d "$ARTDIR";then
+    mkdir -p "$ISODIR/ART"
+    cp -v "$ARTDIR/$GAMEID"* "$ISODIR/ART"
+  fi
+  mv -v "$ISO" "$ISODIR/$ISONAME" || echo "Cannot rename $ISO , continuing"
 }
+
+if ! test -d "$ARTDIR";then
+  echo "ARTDIR is unset or not a directory, skipping art copy"
+fi
 for i in "$@";do
   convert_iso "$i"
 done
